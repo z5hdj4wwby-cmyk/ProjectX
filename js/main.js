@@ -78,4 +78,53 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
   }
+
+  // Progress carousel (swipe via native scroll-snap, plus arrow/dot controls)
+  document.querySelectorAll('.carousel').forEach(function (root) {
+    var track = root.querySelector('.carousel-track');
+    var slides = Array.prototype.slice.call(track.children);
+    var dots = Array.prototype.slice.call(root.querySelectorAll('.carousel-dot'));
+    var prevBtn = root.querySelector('.carousel-arrow--prev');
+    var nextBtn = root.querySelector('.carousel-arrow--next');
+    var current = 0;
+
+    function goTo(i) {
+      current = Math.max(0, Math.min(slides.length - 1, i));
+      track.scrollTo({ left: slides[current].offsetLeft, behavior: 'smooth' });
+      updateDots();
+    }
+    function updateDots() {
+      dots.forEach(function (d, i) { d.classList.toggle('active', i === current); });
+    }
+    if (prevBtn) prevBtn.addEventListener('click', function () { goTo(current - 1); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { goTo(current + 1); });
+    dots.forEach(function (d, i) { d.addEventListener('click', function () { goTo(i); }); });
+
+    var scrollTimeout;
+    track.addEventListener('scroll', function () {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(function () {
+        var idx = Math.round(track.scrollLeft / track.clientWidth);
+        current = Math.max(0, Math.min(slides.length - 1, idx));
+        updateDots();
+      }, 100);
+    });
+  });
+
+  // Reveal the full example report (hidden by default) when a "report-trigger"
+  // element is clicked, so there is only ever one instance of the report on
+  // the page rather than a duplicate preview.
+  var reportPanel = document.getElementById('example-report');
+  function revealReport() {
+    if (reportPanel && reportPanel.hidden) reportPanel.hidden = false;
+  }
+  document.querySelectorAll('.report-trigger').forEach(function (el) {
+    el.addEventListener('click', revealReport);
+  });
+  // Arriving directly at #example-report (e.g. from another page) needs the
+  // panel revealed before the browser's own hash-scroll can find it.
+  if (reportPanel && location.hash === '#example-report') {
+    revealReport();
+    requestAnimationFrame(function () { reportPanel.scrollIntoView({ block: 'start' }); });
+  }
 });
