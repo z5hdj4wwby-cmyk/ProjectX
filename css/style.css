@@ -27,6 +27,7 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
+main > [id] { scroll-margin-top: 88px; }
 
 body {
   margin: 0;
