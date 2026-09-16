@@ -88,6 +88,22 @@ document.addEventListener('DOMContentLoaded', function () {
     var nextBtn = root.querySelector('.carousel-arrow--next');
     var current = 0;
 
+    // Give every slide's card the same height (the tallest slide's natural
+    // height) so nothing resizes or reflows when swiping between them.
+    function equalizeSlideHeights() {
+      var cards = slides.map(function (s) { return s.querySelector('.mock-card') || s; });
+      cards.forEach(function (c) { c.style.minHeight = ''; });
+      var maxH = cards.reduce(function (max, c) { return Math.max(max, c.offsetHeight); }, 0);
+      cards.forEach(function (c) { c.style.minHeight = maxH + 'px'; });
+    }
+    equalizeSlideHeights();
+    window.addEventListener('load', equalizeSlideHeights);
+    var resizeTimeout;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(equalizeSlideHeights, 150);
+    });
+
     function goTo(i) {
       current = Math.max(0, Math.min(slides.length - 1, i));
       track.scrollTo({ left: slides[current].offsetLeft, behavior: 'smooth' });
@@ -111,20 +127,54 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  // Reveal the full example report (hidden by default) when a "report-trigger"
-  // element is clicked, so there is only ever one instance of the report on
-  // the page rather than a duplicate preview.
-  var reportPanel = document.getElementById('example-report');
-  function revealReport() {
-    if (reportPanel && reportPanel.hidden) reportPanel.hidden = false;
+  // Full report modal — opened from the carousel's topic-breakdown card, the
+  // "Sample Report" nav link, or the footer link. Only index.html has the
+  // #report-modal element; on every other page these same-class links point
+  // to "index.html#example-report" and are left to navigate normally, with
+  // the hash picked up and opened on load below.
+  var reportModal = document.getElementById('report-modal');
+  var lastReportTrigger = null;
+
+  function openReportModal() {
+    if (!reportModal) return;
+    reportModal.hidden = false;
+    document.body.classList.add('modal-open');
+    var closeBtn = reportModal.querySelector('.modal-close');
+    if (closeBtn) closeBtn.focus();
   }
+  function closeReportModal() {
+    if (!reportModal) return;
+    reportModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    if (lastReportTrigger && typeof lastReportTrigger.focus === 'function') lastReportTrigger.focus();
+  }
+
   document.querySelectorAll('.report-trigger').forEach(function (el) {
-    el.addEventListener('click', revealReport);
+    el.addEventListener('click', function (e) {
+      if (!reportModal) return; // let cross-page links navigate normally
+      e.preventDefault();
+      lastReportTrigger = el;
+      openReportModal();
+    });
   });
-  // Arriving directly at #example-report (e.g. from another page) needs the
-  // panel revealed before the browser's own hash-scroll can find it.
-  if (reportPanel && location.hash === '#example-report') {
-    revealReport();
-    requestAnimationFrame(function () { reportPanel.scrollIntoView({ block: 'start' }); });
+
+  if (reportModal) {
+    var modalCloseBtn = reportModal.querySelector('.modal-close');
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeReportModal);
+    reportModal.addEventListener('click', function (e) {
+      if (e.target === reportModal) closeReportModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !reportModal.hidden) closeReportModal();
+    });
+    var modalCta = document.getElementById('report-modal-contact-cta');
+    if (modalCta) modalCta.addEventListener('click', closeReportModal);
+
+    // Arriving from another page with #example-report in the URL: open the
+    // modal, then drop the hash so the address bar stays clean while it's open.
+    if (location.hash === '#example-report') {
+      openReportModal();
+      history.replaceState(null, '', location.pathname + location.search);
+    }
   }
 });
